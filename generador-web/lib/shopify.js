@@ -60,7 +60,6 @@ const Q_PEDIDO = `query($q: String!) {
   orders(first: 5, query: $q) {
     nodes {
       id name email cancelledAt test displayFinancialStatus
-      customer { defaultEmailAddress { emailAddress } }
       lineItems(first: 50) { nodes { product { id } } }
       metafield(namespace: "${NS}", key: "${KEY}") { value }
     }
@@ -76,12 +75,11 @@ export async function comprobarPedido(emailIn, pedidoIn) {
   try {
     data = await gql(Q_PEDIDO, { q: `name:#${num}` });
   } catch (e) {
-    console.error(e.message);
+    console.error('Error al consultar Shopify:', e.message);
     return { ok: false, codigo: 'red', mensaje: 'No se ha podido comprobar tu pedido ahora mismo. Inténtalo en unos minutos.' };
   }
   const pedido = (data?.orders?.nodes || []).find((o) => {
-    const mails = [o.email, o.customer?.defaultEmailAddress?.emailAddress].filter(Boolean).map((m) => m.toLowerCase());
-    return o.name.replace(/\D/g, '') === num && mails.includes(email);
+    return o.name.replace(/\D/g, '') === num && String(o.email || '').toLowerCase() === email;
   });
   const fallo = { ok: false, codigo: 'no_existe', mensaje: 'No encontramos un pedido con ese email y ese número. Revisa el email de confirmación de tu compra.' };
   if (!pedido) return fallo;
